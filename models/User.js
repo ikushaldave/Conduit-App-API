@@ -1,0 +1,60 @@
+const mongoose = require("mongoose");
+const { Schema } = mongoose;
+const bcrypt = require("bcrypt");
+
+const userSchema = new Schema(
+	{
+		email: {
+			type: String,
+			required: true,
+			trim: true,
+			match: /\S+@\S+\.\S+/,
+			unique: true,
+		},
+		username: {
+			type: String,
+			required: true,
+			trim: true,
+			unique: true,
+			minlength: 6,
+		},
+		bio: {
+			type: String,
+			minlength: 10,
+			trim: true,
+			default: null,
+		},
+		image: {
+			type: String,
+			default: null,
+		},
+		local: {
+			password: {
+				type: String,
+				trim: true,
+				minlength: 8,
+				match: /^(?=.*?[A-Z])(?=(.*[a-z]){1,})(?=(.*[\d]){1,})(?=(.*[\W]){1,})(?!.*\s).{8,}$/,
+			},
+		},
+	},
+	{ timestamps: true }
+);
+
+userSchema.pre("save", async function (next) {
+  if (this.local.password.trim()) {
+    try {
+      this.local.password = await bcrypt.hash(this.local.password, 12);
+      next();
+    } catch (error) {
+      next(error);
+    }
+  }
+  next();
+})
+
+userSchema.methods.validatePassword = async function (password) {
+  const result = await bcrypt.compare(password, this.local.password);
+  return result;
+}
+
+module.exports = mongoose.model("User", userSchema);
