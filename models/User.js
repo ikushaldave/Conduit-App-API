@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 const bcrypt = require("bcrypt");
+const { use } = require("../routes/users");
 
 const userSchema = new Schema(
 	{
@@ -40,7 +41,7 @@ const userSchema = new Schema(
 	{ timestamps: true }
 );
 
-userSchema.pre("save", async function (next) {
+async function hashPassword (next) {
   if (this.local.password.trim()) {
     try {
       this.local.password = await bcrypt.hash(this.local.password, 12);
@@ -48,9 +49,11 @@ userSchema.pre("save", async function (next) {
     } catch (error) {
       next(error);
     }
-  }
-  next();
-})
+	}
+	next()
+}
+
+userSchema.pre("save", hashPassword)
 
 userSchema.methods.validatePassword = async function (password) {
   const result = await bcrypt.compare(password, this.local.password);

@@ -8,13 +8,5 @@ module.exports = {
     } catch (error) {
       
     }
-  },
-  validateToken: async (req, res, next) => {
-    try {
-      const payload = await jwt.verify(token, process.env.SECRET);
-      return payload;
-    } catch (error) {
-      return next(error)
-    }
   }
 }
