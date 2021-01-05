@@ -10,7 +10,7 @@ module.exports = {
       req.userID = payload.userID
       next()
     } catch (error) {
-      return next(error);
+      return next({ message: "Authentication is Required" , error, status: 401 });
     }
   }
 }

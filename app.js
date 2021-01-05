@@ -8,6 +8,7 @@ var db = require("./db/connection")
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
+var profileRouter = require("./routes/profile");
 
 require("dotenv").config()
 db.connect()
@@ -24,6 +25,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/api', indexRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/profiles', profileRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
