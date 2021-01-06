@@ -28,7 +28,7 @@ router.post("/:username/follow", auth.verifyUserLoggedIn, async (req, res, next)
   try {
     const isUserInDB = await User.findOne({ username });
     if (isUserInDB) {
-      const currentUser = await User.findById(req.userID).populate("followings")
+      const currentUser = await User.findById(req.userID)
       const isCurrentUserAlreadyFollowing = currentUser.followings.includes(isUserInDB.id)
       if (isCurrentUserAlreadyFollowing) {
         res.status(200).type("application/json").json({ profile: {...profile(currentUser, req.userID) }})
