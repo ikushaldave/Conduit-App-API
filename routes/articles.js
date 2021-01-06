@@ -7,6 +7,44 @@ const User = require("../models/User")
 const Article = require("../models/Article")
 const Comment = require("../models/Comment")
 
+/* GET /api/articles */
+
+router.get("/", async (req, res, next) => {
+
+  let query = {}
+  let limitArticle = 20;
+  let offsetArticle = 0;
+
+  try {
+    if (req.query.tag) {
+      if (req.query.tag.split(",").length > 1) {
+        query["tagList"] = {
+          $in: req.query.tag.split(",").map((tag) =>  tag.toLowerCase())};
+      } else { 
+        query["tagList"] = req.query.tag;
+      }
+    }
+    if (req.query.author) {
+      const author = await User.findOne({ username: req.query.author })
+      if (author) {
+        query["author"] = author.id;
+      } else {
+        throw new Error("Result Not Found");
+      }
+    }
+
+    const articles = await Article.find(query).sort({ createdAt: "desc" }).limit(limitArticle).populate("author");
+
+    if (articles.length > 0) {
+      res.status(200).type("application/json").json({ articles: articles.map((article) => articleGenerator(article, article.author))})
+    } else {
+      throw new Error("Result Not Found")
+    }
+  } catch (error) {
+    next({message: "Result Not Found", error, status: 404})
+  }
+})
+
 /* GET /api/articles/:slug */
 
 router.get("/:slug", async (req, res, next) => {
