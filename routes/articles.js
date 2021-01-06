@@ -12,7 +12,7 @@ const Comment = require("../models/Comment")
 router.get("/", async (req, res, next) => {
 
   let query = {}
-  const limitArticle = req.query.limit ?? null;
+  const limitArticle = req.query.limit ?? 20;
   const offset = req.query.offset ?? 0;
 
   try {
@@ -32,6 +32,10 @@ router.get("/", async (req, res, next) => {
         throw new Error("Result Not Found");
       }
     }
+    if (req.query.favorited) {
+      const author = await User.findOne({ username: req.query.favorited });
+      query["favorites"] = author.id;
+    }
 
     const articles = await Article.find(query).sort({ "createdAt": "desc" }).skip(+offset).limit(+limitArticle).populate("author");
     res.status(200).type("application/json").json({ articles: articles.map((article) => articleGenerator(article, article.author, req.userID))})
@@ -43,7 +47,7 @@ router.get("/", async (req, res, next) => {
 /* GET /api/articles/feed */
 
 router.get("/feed", auth.verifyUserLoggedIn, async (req, res, next) => {
-  const limitArticle = req.query.limit ?? null;
+  const limitArticle = req.query.limit ?? 20;
   const offset = req.query.offset ?? 0;
   try {
     const userFeed = await Article.find({ author: req.userID }).sort({ "createdAt" : "desc" }).skip(+offset).limit(+limitArticle).populate("author");
@@ -187,9 +191,58 @@ router.delete("/:slug/comments/:id", auth.verifyUserLoggedIn, async (req, res, n
   }
 })
 
+/* POST /api/articles/:slug/favorite */
+
+router.post("/:slug/favorite", auth.verifyUserLoggedIn, async (req, res, next) => {
+  const slugParam = req.params.slug;
+  try {
+    const article = await Article.findOne({ slug: slugParam });
+    if (article) {
+      const user = await User.findById(req.userID);
+      const isFavoritesByUser = user.favorites.includes(article.id)
+      if (isFavoritesByUser) {
+        res.status(200).type("application/json").json({ article: articleGenerator(article, user, req.userID) })
+      } else {
+        const modifiedArticle = await Article.findByIdAndUpdate(article.id, { favoritesCount: article.favoritesCount + 1, $push: { favorites: req.userID } }, { new: true, useFindAndModify: false });
+        const modifiedUser = await User.findByIdAndUpdate(req.userID, { $push: { favorites: article.id } }, { new: true, useFindAndModify: false });
+        res.status(200).type("application/json").json({ article: articleGenerator(modifiedArticle, modifiedUser, req.userID) })
+      }
+    } else {
+      throw new Error("Article Not Found")
+    }
+  } catch (error) {
+    next({ "message": "Article Not Found", error, status: 404 })
+  }
+})
+
+/* DELETE /api/articles/:slug/favorite */
+
+router.delete("/:slug/favorite", auth.verifyUserLoggedIn, async (req, res, next) => {
+  const slugParam = req.params.slug;
+  try {
+		const article = await Article.findOne({ slug: slugParam });
+		if (article) {
+			const user = await User.findById(req.userID);
+			const isFavoritesByUser = user.favorites.includes(article.id);
+			if (isFavoritesByUser) {
+        const modifiedArticle = await Article.findByIdAndUpdate(article.id, { favoritesCount: article.favoritesCount - 1, $pull: { favorites: req.userID } }, { new: true, useFindAndModify: false });
+        const modifiedUser = await User.findByIdAndUpdate(req.userID, { $pull: { favorites: article.id } }, { new: true, useFindAndModify: false });
+        res.status(200).type("application/json").json({ article: articleGenerator(modifiedArticle, modifiedUser, req.userID) });
+        } else {
+				res.status(200).type("application/json").json({ article: articleGenerator(article, user, req.userID) });
+			}
+		} else {
+			throw new Error("Article Not Found");
+		}
+  } catch (error) {
+		next({ message: "Article Not Found", error, status: 404 });
+  }
+})
+
 function articleGenerator (article, author, loggedUserID = null) {
 	const isLoggedUserIsFollowing = author.followings.includes(loggedUserID);
   const isLoggedUserIsFollower = author.followers.includes(loggedUserID);
+  const isFavoritesByUser = author.favorites.includes(article.id);
 	return {
 		slug: article.slug,
 		title: article.title,
@@ -198,7 +251,7 @@ function articleGenerator (article, author, loggedUserID = null) {
 		tagList: article.tagList,
 		createdAt: article.createdAt,
 		updatedAt: article.updatedAt,
-		favorited: article.favorited,
+		favorited: isFavoritesByUser,
 		favoritesCount: article.favoritesCount,
 		author: {
 			username: author.username,
