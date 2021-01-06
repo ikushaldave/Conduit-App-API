@@ -28,7 +28,8 @@ const articleSchema = new Schema(
 		},
 		tagList: [
 			{
-        type: String,
+				type: String,
+				lowercase: true
 			},
 		],
 		favorited: {

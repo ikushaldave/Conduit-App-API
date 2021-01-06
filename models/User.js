@@ -19,7 +19,7 @@ const userSchema = new Schema(
 			unique: true,
 			minlength: 6,
 			lowercase: true,
-			match: /^(?=.{4,20}$)(?:[a-zA-Z\d]+(?:(?:\.|-|_)[a-zA-Z\d])*)+$/
+			match: /^(?=.{4,20}$)(?:[a-zA-Z\d]+(?:(?:\.|-|_)[a-zA-Z\d])*)+$/,
 		},
 		bio: {
 			type: String,
@@ -39,14 +39,24 @@ const userSchema = new Schema(
 				match: /^(?=.*?[A-Z])(?=(.*[a-z]){1,})(?=(.*[\d]){1,})(?=(.*[\W]){1,})(?!.*\s).{8,}$/,
 			},
 		},
-		followings: [{
-			type: Schema.Types.ObjectId,
-			ref: "User"
-		}],
-		followers: [{
-			type: Schema.Types.ObjectId,
-			ref: "User"
-		}],
+		followings: [
+			{
+				type: Schema.Types.ObjectId,
+				ref: "User",
+			},
+		],
+		followers: [
+			{
+				type: Schema.Types.ObjectId,
+				ref: "User",
+			},
+		],
+		favorites: [
+			{
+				type: Schema.Types.ObjectId,
+				ref: "Article"
+			}
+		]
 	},
 	{ timestamps: true }
 );

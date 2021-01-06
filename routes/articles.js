@@ -12,8 +12,8 @@ const Comment = require("../models/Comment")
 router.get("/", async (req, res, next) => {
 
   let query = {}
-  let limitArticle = 20;
-  let offsetArticle = 0;
+  const limitArticle = req.query.limit ?? null;
+  const offset = req.query.offset ?? 0;
 
   try {
     if (req.query.tag) {
@@ -33,15 +33,23 @@ router.get("/", async (req, res, next) => {
       }
     }
 
-    const articles = await Article.find(query).sort({ createdAt: "desc" }).limit(limitArticle).populate("author");
-
-    if (articles.length > 0) {
-      res.status(200).type("application/json").json({ articles: articles.map((article) => articleGenerator(article, article.author))})
-    } else {
-      throw new Error("Result Not Found")
-    }
+    const articles = await Article.find(query).sort({ "createdAt": "desc" }).skip(+offset).limit(+limitArticle).populate("author");
+    res.status(200).type("application/json").json({ articles: articles.map((article) => articleGenerator(article, article.author, req.userID))})
   } catch (error) {
     next({message: "Result Not Found", error, status: 404})
+  }
+})
+
+/* GET /api/articles/feed */
+
+router.get("/feed", auth.verifyUserLoggedIn, async (req, res, next) => {
+  const limitArticle = req.query.limit ?? null;
+  const offset = req.query.offset ?? 0;
+  try {
+    const userFeed = await Article.find({ author: req.userID }).sort({ "createdAt" : "desc" }).skip(+offset).limit(+limitArticle).populate("author");
+    res.status(200).type("application/json").json({ articles: userFeed.map((feed) => articleGenerator(feed, feed.author, req.userID, req.userID))})
+  } catch (error) {
+    next({ message: "Something Went Wrong", error, status: 500})
   }
 })
 
@@ -52,7 +60,7 @@ router.get("/:slug", async (req, res, next) => {
   try {
     const article = await Article.findOne({ slug: slugParam }).populate("author");
     if (!article) throw new Error("Page Not Found")
-    res.status(200).type("application/json").json({ article: { ...articleGenerator(article, article.author) }})
+    res.status(200).type("application/json").json({ article: { ...articleGenerator(article, article.author, req.userID) }})
   } catch (error) {
     next({ message: "Page Not Found", error, status: 404 })
   }
@@ -68,7 +76,7 @@ router.post("/", auth.verifyUserLoggedIn, async (req, res, next) => {
 		author: req.userID,
 	});
     const author = await User.findById(req.userID)
-    res.status(201).type("application/json").json({ article: { ...articleGenerator(article, author) } });
+    res.status(201).type("application/json").json({ article: { ...articleGenerator(article, author, req.userID) } });
   } catch (error) {
     next({ message: "Something Went Wrong Please Try Again", error, status: 500 })
   }
@@ -86,7 +94,7 @@ router.put("/:slug", auth.verifyUserLoggedIn, async (req, res, next) => {
         req.body.article.slug = slug(req.body.article.title)
       }
       const modifiedArticle = await Article.findOneAndUpdate({ slug: slugParam }, { ...req.body.article }, { new: true, useFindAndModify: false });
-      res.status(202).type("application/json").json({ article: { ...articleGenerator(modifiedArticle, article.author) }})
+      res.status(202).type("application/json").json({ article: { ...articleGenerator(modifiedArticle, article.author, req.userID) }})
     } else {
       throw new Error("You Are Not Authorized to Make Changes in Following Article")
     }
@@ -125,11 +133,11 @@ router.get("/:slug/comments", async (req, res, next) => {
           path: "author",
           model: "User",
         }
-      })
+    })
     if (article) {
-      res.status(200).type("application/json").json({ "comments": article.comments.map((comment) => commentGenerator(comment, comment.author))})
+      res.status(200).type("application/json").json({ "comments": article.comments.map((comment) => commentGenerator(comment, comment.author, req.userID))})
 		} else {
-			throw new Error("Article Not Found");
+			throw new Error("Comment Not Found");
 		}
   } catch (error) {
 		next({ message: "Something Went Wrong Please Try Again", error, status: 404 });
@@ -145,8 +153,8 @@ router.post("/:slug/comments", auth.verifyUserLoggedIn, async (req, res, next) =
     if (article) {
       const author = await User.findById(req.userID);
       const comment = await (await Comment.create({ body: req.body.comment.body, articleID: article.id, author: req.userID })).populate("author");
-      const modifiedArticle = await Article.findOneAndUpdate({ slug: slugParam }, { $push: { comments: comment.id } }, { new: true, useFindAndModify: false })
-      res.status(201).type("application/json").json({ comment: { ...commentGenerator(comment, author) }})
+      const modifiedArticle = await Article.findOneAndUpdate({ slug: slugParam }, { $push: { comments: comment.id } }, { new: true, useFindAndModify: false });
+      res.status(201).type("application/json").json({ "comment": { ...commentGenerator(comment, author, req.userID) }})
     } else {
       throw new Error("Article Not Found")
     }
@@ -179,7 +187,9 @@ router.delete("/:slug/comments/:id", auth.verifyUserLoggedIn, async (req, res, n
   }
 })
 
-function articleGenerator (article, author) {
+function articleGenerator (article, author, loggedUserID = null) {
+	const isLoggedUserIsFollowing = author.followings.includes(loggedUserID);
+  const isLoggedUserIsFollower = author.followers.includes(loggedUserID);
 	return {
 		slug: article.slug,
 		title: article.title,
@@ -194,14 +204,18 @@ function articleGenerator (article, author) {
 			username: author.username,
 			bio: author.bio,
 			image: author.image,
-			following: `/api/profiles/${author.username}/following`,
-			follower: `/api/profiles/${author.username}/follower`,
+			following: isLoggedUserIsFollowing,
+			follower: isLoggedUserIsFollower,
+			followings: `/api/profiles/${author.username}/followings`,
+			followers: `/api/profiles/${author.username}/followers`,
 		},
 	};
 }
 
-function commentGenerator (comment, author) {
-  return {
+function commentGenerator(comment, author, loggedUserID = null) {
+	const isLoggedUserIsFollowing = author.followings.includes(loggedUserID);
+  const isLoggedUserIsFollower = author.followers.includes(loggedUserID);
+	return {
 		id: comment.id,
 		createdAt: comment.createdAt,
 		updatedAt: comment.updatedAt,
@@ -210,10 +224,12 @@ function commentGenerator (comment, author) {
 			username: author.username,
 			bio: author.bio,
 			image: author.image,
-			following: `/api/profiles/${author.username}/following`,
-			follower: `/api/profiles/${author.username}/follower`,
+			following: isLoggedUserIsFollowing,
+			follower: isLoggedUserIsFollower,
+			followings: `/api/profiles/${author.username}/followings`,
+			followers: `/api/profiles/${author.username}/followers`,
 		},
-  };
+	};
 }
 
 module.exports = router;
