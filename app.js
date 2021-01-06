@@ -9,7 +9,7 @@ var db = require("./db/connection")
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 var profileRouter = require("./routes/profiles");
-var articlesRouter = require("./routes/articles")
+var articlesRouter = require("./routes/articles");
 
 require("dotenv").config()
 db.connect()

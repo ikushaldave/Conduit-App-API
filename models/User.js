@@ -39,11 +39,19 @@ const userSchema = new Schema(
 				match: /^(?=.*?[A-Z])(?=(.*[a-z]){1,})(?=(.*[\d]){1,})(?=(.*[\W]){1,})(?!.*\s).{8,}$/,
 			},
 		},
-		following: [{
+		following: {
+			type: Boolean,
+			default: false
+		},
+		follower: {
+			type: Boolean,
+			default: false
+		},
+		followings: [{
 			type: Schema.Types.ObjectId,
 			ref: "User"
 		}],
-		follower: [{
+		followers: [{
 			type: Schema.Types.ObjectId,
 			ref: "User"
 		}],
