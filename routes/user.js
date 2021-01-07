@@ -7,7 +7,7 @@ var jwt = require("../config/token")
 var auth = require("../middleware/auth")
 var hashPassword = require("../modules/hashPassword")
 
-/* GET /api/users */
+/* GET /api/user */
 
 router.get('/', auth.verifyUserLoggedIn, async (req, res, next) => {
   try {
@@ -19,7 +19,7 @@ router.get('/', auth.verifyUserLoggedIn, async (req, res, next) => {
   }
 });
 
-/* POST  /api/users */
+/* POST  /api/user */
 
 router.post("/", async (req, res, next) => {
   try {
@@ -38,7 +38,7 @@ router.post("/", async (req, res, next) => {
 })
 
 
-/* POST /api/users/login */
+/* POST /api/user/login */
 
 router.post("/login", async (req, res, next) => {
   try {
@@ -60,7 +60,7 @@ router.post("/login", async (req, res, next) => {
 
 })
 
-/* PUT /api/users/ */
+/* PUT /api/user/ */
 
 router.put("/", auth.verifyUserLoggedIn, async (req, res, next) => {
   const users = req.body.users

@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 const bcrypt = require("bcrypt");
-const { use } = require("../routes/users");
+const { use } = require("../routes/user");
 
 const userSchema = new Schema(
 	{
