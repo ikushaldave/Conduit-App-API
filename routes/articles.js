@@ -97,6 +97,9 @@ router.put("/:slug", auth.verifyUserLoggedIn, async (req, res, next) => {
       if (req.body.article.title) {
         req.body.article.slug = slug(req.body.article.title)
       }
+      if (req.body.article.tagList) {
+        article.tagList.addToSet(req.body.article.tagList.join(","));
+      }
       const modifiedArticle = await Article.findOneAndUpdate({ slug: slugParam }, { ...req.body.article }, { new: true, useFindAndModify: false });
       res.status(202).type("application/json").json({ article: { ...articleGenerator(modifiedArticle, article.author, req.userID) }})
     } else {
