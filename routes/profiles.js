@@ -14,10 +14,13 @@ router.get("/:username", async (req, res, next) => {
     if (user) {
       res.status(200).type("application/json").json({ profile: { ...profile(user, req.userID) }})
     } else {
-      throw new Error("User Not Found")
+      throw new Error("invalid-02")
     }
   } catch (error) {
-    next({message: "Not Found", error, status: 404})
+    let detail = "user not found";
+    let message = "bad request";
+    let status = 404;
+    next(customError(error.message, detail, message, status));
   }
 })
 
@@ -26,22 +29,25 @@ router.get("/:username", async (req, res, next) => {
 router.post("/:username/follow", auth.verifyUserLoggedIn, async (req, res, next) => {
   const username = req.params.username;
   try {
-    const isUserInDB = await User.findOne({ username });
-    if (isUserInDB) {
+    const isFollowUserInDB = await User.findOne({ username });
+    if (isFollowUserInDB) {
       const currentUser = await User.findById(req.userID)
-      const isCurrentUserAlreadyFollowing = currentUser.followings.includes(isUserInDB.id)
+      const isCurrentUserAlreadyFollowing = currentUser.followings.includes(isFollowUserInDB.id)
       if (isCurrentUserAlreadyFollowing) {
         res.status(200).type("application/json").json({ profile: {...profile(currentUser, req.userID) }})
       } else {
-        const followingUser = await User.findOneAndUpdate({ username: username.toLocaleLowerCase() }, { $push: { followers: req.userID } }, { new: true, useFindAndModify: false });
+        const followingUser = await User.findOneAndUpdate({ username: username.toLowerCase() }, { $push: { followers: req.userID } }, { new: true, useFindAndModify: false });
         const currentUser = await User.findByIdAndUpdate(req.userID, { $push: { followings: followingUser.id } }, { new: true, useFindAndModify: false })
         res.status(202).type("application/json").json({ profile: { ...profile(currentUser, req.userID) } });
       }
     } else {
-      throw new Error("User Not Found")
+      throw new Error("invalid-02")
     }
   } catch (error) {
-    next({ message: "Something Went Wrong Please try Again", error, status: 404 })
+    let detail = "user not found";
+    let message = "bad request";
+    let status = 404;
+    next(customError(error.message, detail, message, status));
   }
 });
 
@@ -50,22 +56,25 @@ router.post("/:username/follow", auth.verifyUserLoggedIn, async (req, res, next)
 router.delete("/:username/follow", auth.verifyUserLoggedIn, async (req, res, next) => {
   const username = req.params.username;
   try {
-    const isUserInDB = await User.findOne({ username });
-    if (isUserInDB) {
+    const isFollowUserInDB = await User.findOne({ username });
+    if (isFollowUserInDB) {
       const currentUser = await User.findById(req.userID).populate("followings");
-      const isCurrentUserFollowing = currentUser.followings.includes(isUserInDB.id);
+      const isCurrentUserFollowing = currentUser.followings.includes(isFollowUserInDB.id);
       if (isCurrentUserFollowing) {
-        const followingUser = await User.findByIdAndUpdate(isUserInDB.id, { $pull: { followers: req.userID } }, { new: true, useFindAndModify: false });
-        const currentUser = await User.findByIdAndUpdate(req.userID, { $pull: { followings: isUserInDB.id } }, { new: true, useFindAndModify: false });
+        const followingUser = await User.findByIdAndUpdate(isFollowUserInDB.id, { $pull: { followers: req.userID } }, { new: true, useFindAndModify: false });
+        const currentUser = await User.findByIdAndUpdate(req.userID, { $pull: { followings: isFollowUserInDB.id } }, { new: true, useFindAndModify: false });
         res.status(202).type("application/json").json({ profile: { ...profile(currentUser, req.userID) } });
       } else {
         res.status(200).type("application/json").json({ profile: { ...profile(currentUser, req.userID) } });
       }
     } else {
-      throw new Error("User Not Found");
+      throw new Error("invalid-02");
     }
   } catch (error) {
-    next({ message: "Something Went Wrong Please try Again", error, status: 404 });
+    let detail = "user not found";
+    let message = "bad request";
+    let status = 404;
+    next(customError(error.message, detail, message, status));
   }
 })
 
@@ -79,10 +88,13 @@ router.get("/:username/followings", auth.verifyUserLoggedIn, async (req, res, ne
       const user = await User.findOne({ username }).populate("followings");
       res.status(200).type("application/json").json(user.followings.map((follow) => profile(follow, req.userID)))
     } else {
-      throw new Error("Page Not Found")
+      throw new Error("invalid-02");
     }
   } catch (error) {
-    next({ message: "Something Went Wrong Please try Again", error, status: 500 })
+    let detail = "user not found";
+    let message = "bad request";
+    let status = 404;
+    next(customError(error.message, detail, message, status));
   }
 });
 
@@ -91,15 +103,18 @@ router.get("/:username/followings", auth.verifyUserLoggedIn, async (req, res, ne
 router.get("/:username/followers", auth.verifyUserLoggedIn, async (req, res, next) => {
   const username = req.params.username;
   try {
-		const isUserInDB = await User.findOne({ username });
-		if (isUserInDB) {
+		const isFollowUserInDB = await User.findOne({ username });
+		if (isFollowUserInDB) {
 			const user = await User.findOne({ username }).populate("followers");
 			res.status(200).type("application/json").json(user.followers.map((follow) => profile(follow, req.userID)));
 		} else {
-			throw new Error("Page Not Found");
+			throw new Error("invalid-02");
 		}
   } catch (error) {
-		next({ message: "Something Went Wrong Please try Again", error, status: 500 });
+		let detail = "user not found";
+		let message = "bad request";
+		let status = 404;
+		next(customError(error.message, detail, message, status));
   }
 });
 
@@ -115,6 +130,15 @@ function profile (user, loggedUserID = null) {
 		followings: `/api/profiles/${user.username}/followings`,
 		followers: `/api/profiles/${user.username}/followers`,
   };
+}
+
+function customError(errorCode, detail, message, status) {
+	return {
+		message,
+		status,
+		detail,
+		errorCode,
+	};
 }
 
 module.exports = router;

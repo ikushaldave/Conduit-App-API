@@ -29,18 +29,33 @@ router.get("/", async (req, res, next) => {
       if (author) {
         query["author"] = author.id;
       } else {
-        throw new Error("Result Not Found");
+        throw new Error("invalid-03");
       }
     }
     if (req.query.favorited) {
       const author = await User.findOne({ username: req.query.favorited });
+      if (author) {
       query["favorites"] = author.id;
+      } else {
+        throw new Error("invalid-03");
+      }
     }
 
     const articles = await Article.find(query).sort({ "createdAt": "desc" }).skip(+offset).limit(+limitArticle).populate("author");
-    res.status(200).type("application/json").json({ articles: articles.map((article) => articleGenerator(article, article.author, req.userID))})
+
+    if (articles.length > 0) {
+      res.status(200).type("application/json").json({ articles: articles.map((article) => articleGenerator(article, article.author, req.userID))})
+    } else {
+      throw new Error("invalid-04");
+    }
   } catch (error) {
-    next({message: "Result Not Found", error, status: 404})
+    let detail = "author not found";
+    let message = "bad request";
+    let status = 404;
+    if (error.message == "invalid-04") {
+      detail = "article not found by following author, tags or favorited by authors";
+    }
+    next(customError(error.message, detail, message, status));
   }
 })
 
@@ -63,10 +78,13 @@ router.get("/:slug", async (req, res, next) => {
 	const slugParam = req.params.slug;
   try {
     const article = await Article.findOne({ slug: slugParam }).populate("author");
-    if (!article) throw new Error("Page Not Found")
+    if (!article) throw new Error("invalid-04")
     res.status(200).type("application/json").json({ article: { ...articleGenerator(article, article.author, req.userID) }})
   } catch (error) {
-    next({ message: "Page Not Found", error, status: 404 })
+    let detail = "Article not found";
+    let message = "bad request";
+    let status = 404;
+    next(customError(error.message, detail, message, status));
   }
 });
 
@@ -74,15 +92,29 @@ router.get("/:slug", async (req, res, next) => {
 
 router.post("/", auth.verifyUserLoggedIn, async (req, res, next) => {
   try {
-    const article = await Article.create({
-		...req.body.article,
-		slug: slug(req.body.article.title),
-		author: req.userID,
-	});
-    const author = await User.findById(req.userID)
-    res.status(201).type("application/json").json({ article: { ...articleGenerator(article, author, req.userID) } });
+    const isSlugAvailable = await Article.findOne({ slug: slug(req.body.article.title) });
+    if (!isSlugAvailable) {
+      const article = await Article.create({
+        ...req.body.article,
+        slug: slug(req.body.article.title),
+        author: req.userID,
+      });
+      const author = await User.findById(req.userID)
+      res.status(201).type("application/json").json({ article: { ...articleGenerator(article, author, req.userID) } });
+    } else {
+      throw new Error("val-03")
+    }
   } catch (error) {
-    next({ message: "Something Went Wrong Please Try Again", error, status: 500 })
+    let errorCode = "val-04";
+    let detail = "title is required, description is required ,body is required ";
+    let message = error._message;
+    let status = 422;
+    if (error.message === "val-03") {
+      message = "title should be unique"
+      errorCode = error.message;
+      detail = "title is already used by other user please use other title for better search result";
+    }
+    next(customError(errorCode, detail, message, status));
   }
 })
 
@@ -91,6 +123,8 @@ router.post("/", auth.verifyUserLoggedIn, async (req, res, next) => {
 router.put("/:slug", auth.verifyUserLoggedIn, async (req, res, next) => {
   const slugParam = req.params.slug;
   try {
+    const isSlugAvailable = await Article.findOne({ slug: slug(req.body.article.title) });
+    if(isSlugAvailable) throw new Error("val-04")
     const article = await Article.findOne({ slug: slugParam }).populate("author");
     const isUserOwnerOfArticle = article.author.id === req.userID;
     if (isUserOwnerOfArticle) {
@@ -103,10 +137,18 @@ router.put("/:slug", auth.verifyUserLoggedIn, async (req, res, next) => {
       const modifiedArticle = await Article.findOneAndUpdate({ slug: slugParam }, { ...req.body.article }, { new: true, useFindAndModify: false });
       res.status(202).type("application/json").json({ article: { ...articleGenerator(modifiedArticle, article.author, req.userID) }})
     } else {
-      throw new Error("You Are Not Authorized to Make Changes in Following Article")
+      throw new Error("auth-03")
     }
   } catch (error) {
-    next({ message: "Something Went Wrong Please Try Again", error, status: 403 });
+    let detail = "title is required, description is required ,body is required ";
+    let message = error._message;
+    let status = 422;
+    if (error.message === "auth-03") {
+      message = "you are not authorize to modify article";
+      detail = "user is not authorize to edit a article it is not a owner of article";
+      status = 403
+    }
+    next(customError(error.message, detail, message, status));
   }
 })
 
@@ -116,15 +158,24 @@ router.delete("/:slug", auth.verifyUserLoggedIn, async (req, res, next) => {
   const slugParam = req.params.slug;
   try {
     const article = await Article.findOne({ slug: slugParam }).populate("author");
+    if(!article) throw new Error("invalid-06")
     const isUserOwnerOfArticle = article.author.id === req.userID;
     if (isUserOwnerOfArticle) {
       const modifiedArticle = await Article.findOneAndDelete({ slug: slugParam });
       res.status(202).type("application/json").json({ article: "Article Had Been Deleted" });
     } else {
-      throw new Error("You Are Not Authorized to Make Changes in Following Article");
+      throw new Error("auth-04");
     }
   } catch (error) {
-    next({ message: "Something Went Wrong Please Try Again", error, status: 403 });
+    let detail = "operation can't complete because article not found";
+    let message = "article not found";
+    let status = 404;
+    if (error.message === "auth-04") {
+      message = "you are not authorize to delete article";
+      detail = "user is not authorize to delete a article it is not a owner of article";
+      status = 403;
+    }
+    next(customError(error.message, detail, message, status));
   }
 })
 
@@ -144,10 +195,13 @@ router.get("/:slug/comments", async (req, res, next) => {
     if (article) {
       res.status(200).type("application/json").json({ "comments": article.comments.map((comment) => commentGenerator(comment, comment.author, req.userID))})
 		} else {
-			throw new Error("Comment Not Found");
+			throw new Error("invalid-04");
 		}
   } catch (error) {
-		next({ message: "Something Went Wrong Please Try Again", error, status: 404 });
+		let detail = "Article not found";
+		let message = "bad request";
+		let status = 404;
+		next(customError(error.message, detail, message, status));
   }
 })
 
@@ -163,10 +217,13 @@ router.post("/:slug/comments", auth.verifyUserLoggedIn, async (req, res, next) =
       const modifiedArticle = await Article.findOneAndUpdate({ slug: slugParam }, { $push: { comments: comment.id } }, { new: true, useFindAndModify: false });
       res.status(201).type("application/json").json({ "comment": { ...commentGenerator(comment, author, req.userID) }})
     } else {
-      throw new Error("Article Not Found")
+      throw new Error("invalid-06")
     }
   } catch (error) {
-    next({ message: "Something Went Wrong Please Try Again", error, status: 404 });
+    let detail = "comment operation can't proceed because article not found";
+    let message = "article not found";
+    let status = 404;
+    next(customError(error.message, detail, message, status));
   }
 })
 
@@ -178,19 +235,32 @@ router.delete("/:slug/comments/:id", auth.verifyUserLoggedIn, async (req, res, n
   try {
     const article = await Article.findOne({ slug: slugParam });
     const comment = await Comment.findById(commentIdParam).populate("author");
-    const isOwnerOfComment = comment.author.id === req.userID;
-    if (article && comment) {
-      if(!isOwnerOfComment) throw new Error("Unauthorized")
+    if(!article) throw new Error("invalid-06")
+    if (comment) {
+      const isOwnerOfComment = comment.author.id === req.userID;
+      if(!isOwnerOfComment) throw new Error("auth-05")
       const deletedComment = await Comment.findByIdAndDelete(commentIdParam);
       const modifiedArticle = await Article.findByIdAndUpdate(article.id,{$pull :{ "comments": commentIdParam }}, { new: true, useFindAndModify: false })
 			res.status(201)
 				.type("application/json")
 				.json({ comment: "Comment Deleted Successfully" });
-		} else {
-			throw new Error("Article Not Found");
+    } else {
+			throw new Error("invalid-07");
 		}
   } catch (error) {
-    next({ message: "Something Went Wrong Please Try Again", error, status: 403 });
+    let detail = "operation can't complete because article not found";
+    let message = "article not found";
+    let status = 404;
+    if (error.message === "auth-05") {
+      message = "you are not authorize to delete comment";
+      detail = "user is not authorize to delete a comment it is not a owner of comment";
+      status = 403;
+    }
+    if (error.message === "invalid-07") {
+      message = "operation can't complete because comment not found";
+      detail = "comment not found";
+    }
+    next(customError(error.message, detail, message, status));
   }
 })
 
@@ -211,10 +281,13 @@ router.post("/:slug/favorite", auth.verifyUserLoggedIn, async (req, res, next) =
         res.status(200).type("application/json").json({ article: articleGenerator(modifiedArticle, modifiedUser, req.userID) })
       }
     } else {
-      throw new Error("Article Not Found")
+      throw new Error("invalid-06");
     }
   } catch (error) {
-    next({ "message": "Article Not Found", error, status: 404 })
+    let detail = "operation can't complete because article not found";
+		let message = "article not found";
+    let status = 404;
+    next(customError(error.message, detail, message, status));
   }
 })
 
@@ -235,10 +308,13 @@ router.delete("/:slug/favorite", auth.verifyUserLoggedIn, async (req, res, next)
 				res.status(200).type("application/json").json({ article: articleGenerator(article, user, req.userID) });
 			}
 		} else {
-			throw new Error("Article Not Found");
+			throw new Error("invalid-06");
 		}
   } catch (error) {
-		next({ message: "Article Not Found", error, status: 404 });
+    let detail = "operation can't complete because article not found";
+    let message = "article not found";
+    let status = 404;
+		next(customError(error.message, detail, message, status));
   }
 })
 
@@ -285,6 +361,15 @@ function commentGenerator(comment, author, loggedUserID = null) {
 			followings: `/api/profiles/${author.username}/followings`,
 			followers: `/api/profiles/${author.username}/followers`,
 		},
+	};
+}
+
+function customError(errorCode, detail, message, status) {
+	return {
+		message,
+		status,
+		detail,
+		errorCode,
 	};
 }
 

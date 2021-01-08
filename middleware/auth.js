@@ -5,10 +5,14 @@ module.exports = {
     try {
       const token = req.headers.authorization;
       const payload = await jwt.verify(token, process.env.SECRET);
+      console.log(true)
       req.userID = payload.userID
       next()
     } catch (error) {
-      return next({ message: "Authentication is Required" , error, status: 401 });
+      let detail = "Unauthorized requests";
+      let status = 401;
+      let errorCode = "auth-00";
+      return next(customError(errorCode, detail, error.message, status));
     }
   },
   currentLoggedUserInfo: async (req, res, next) => {
@@ -20,7 +24,19 @@ module.exports = {
       }
       next();
     } catch (error) {
-      return next({ message: "Something Went Wrong", error, status: 500 });
+      let detail = "token malformed or invalid";
+      let status = 401;
+      let errorCode = "auth-00";
+      return next(customError(errorCode, detail, error.message, status));
     }
   }
+}
+
+function customError(errorCode, detail, message, status) {
+	return {
+		message,
+		status,
+    detail,
+    errorCode,
+	};
 }

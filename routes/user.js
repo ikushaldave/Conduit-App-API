@@ -12,10 +12,18 @@ var hashPassword = require("../modules/hashPassword")
 router.get('/', auth.verifyUserLoggedIn, async (req, res, next) => {
   try {
     const user = await User.findById(req.userID);
-    const token = req.headers.authorization;
-    res.status(200).type("application/json").json({ "user": {...userInfo(user, token)} })
+    if (user) {
+      const token = req.headers.authorization;
+      res.status(200).type("application/json").json({ "user": {...userInfo(user, token)} })
+    } else {
+      throw new Error("auth-01")
+    }
   } catch (error) {
-    
+    let detail = "please re-login token malfunctioned";
+    let message = "";
+    let status = 400;
+    let errorCode = error.message
+    next(customError(error))
   }
 });
 
@@ -33,7 +41,11 @@ router.post("/", async (req, res, next) => {
     const token = await jwt.generateToken({ userID: user.id })
     res.status(201).type("application/json").json({ "user": {...userInfo(user, token)} })
   } catch (error) {
-    return next({ message: "Something Went Wrong Creating New User", error, status: 500})
+    let errorCode = "val-01";
+    let detail = "username should minimum of length 6 and maximum 10 & can contain '. - _' but can't start with these & others special character, email should be valid & password should contain minimum of 8 at least one capital, at least one digit, and at least one special character";
+    let message = error._message;
+    let status = 422;
+    next(customError.error(errorCode, detail, message, status))
   }
 })
 
@@ -49,13 +61,21 @@ router.post("/login", async (req, res, next) => {
         const token = await jwt.generateToken({ userID: user.id })
         res.status(200).type("application/json").json({ "user": {...userInfo(user, token) }})
       } else {
-        throw new Error("Please Check a Email & Password")
+        throw new Error("auth-02")
       }
     } else {
-      throw new Error("InValid User and Password")
+      throw new Error("val-02");
     }
   } catch (error) {
-    return next({ message: "Something Went Wrong", error, status: 401 });
+    let message = detail = null;
+    if  (error.message == "auth-02") {
+      message = "password is invalid";
+      detail = "password doesn't match";
+    } else {
+      message = "email and password is required";
+      detail = "valid email and correct password is required";
+    }
+    return next(customError(error.message, detail, message, 400));
   }
 
 })
@@ -63,22 +83,25 @@ router.post("/login", async (req, res, next) => {
 /* PUT /api/user/ */
 
 router.put("/", auth.verifyUserLoggedIn, async (req, res, next) => {
-  const users = req.body.users
+  const user = req.body.user
   const token = req.headers.authorization;
   try {
-    if (users.email || users.username || users.password || users.image || users.bio) {
-      if (users.password) {
-        users.local= {
-          password: await hashPassword(users.password)
+    if (user.email || user.username || user.password || user.image || user.bio) {
+      if (user.password) {
+          user.local= {
+              password: await hashPassword(user.password)
+          }
         }
-      }
-      const user = await User.findByIdAndUpdate(req.userID, users, { new:true, useFindAndModify: false })
-      res.status(202).type("application/json").json({ "user": {...userInfo(user, token) }})
+      const userModified = await User.findByIdAndUpdate(req.userID, user, { new: true, useFindAndModify: false })
+      res.status(202).type("application/json").json({ "user": {...userInfo(userModified, token) }})
     } else {
-      throw new Error("Updating for Following Invalid")
+      throw new Error("invalid-01")
     }
   } catch (error) {
-    return next({ message: "No Content" , error, status: 204})
+    let detail = "no field updated due to invalid data passed";
+    let message = "Not Accepted";
+    let status = 406;
+    next(customError(error.message, detail, message, status));
   }
 })
 
@@ -90,6 +113,15 @@ function userInfo (user, token) {
     image: user.image,
     token
   }
+}
+
+function customError(errorCode, detail, message, status) {
+	return {
+		message,
+		status,
+		detail,
+		errorCode,
+	};
 }
 
 module.exports = router;

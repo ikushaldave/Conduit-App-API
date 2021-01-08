@@ -10,7 +10,8 @@ const userSchema = new Schema(
 			required: true,
 			trim: true,
 			match: /\S+@\S+\.\S+/,
-			unique: true,
+			lowercase: true,
+			unique: true
 		},
 		username: {
 			type: String,
@@ -18,8 +19,9 @@ const userSchema = new Schema(
 			trim: true,
 			unique: true,
 			minlength: 6,
+			maxlength: 10,
 			lowercase: true,
-			match: /^(?=.{4,20}$)(?:[a-zA-Z\d]+(?:(?:\.|-|_)[a-zA-Z\d])*)+$/,
+			match: /^(?=.{4,10}$)(?:[a-zA-Z\d]+(?:(?:\.|-|_)[a-zA-Z\d])*)+$/,
 		},
 		bio: {
 			type: String,
@@ -62,6 +64,7 @@ const userSchema = new Schema(
 );
 
 async function hashPassword (next) {
+	console.log(this)
   if (this.local.password.trim()) {
     try {
       this.local.password = await bcrypt.hash(this.local.password, 12);
