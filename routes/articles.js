@@ -6,42 +6,37 @@ const auth = require("../middleware/auth");
 const User = require("../models/User")
 const Article = require("../models/Article")
 const Comment = require("../models/Comment")
+const mongoose = require("mongoose")
 
 /* GET /api/articles */
 
 router.get("/", async (req, res, next) => {
 
-  let query = {}
+  // let query = {}
+  let _in = null;
+  let _where = null;
   const limitArticle = req.query.limit ?? 20;
   const offset = req.query.offset ?? 0;
 
   try {
     if (req.query.tag) {
-      if (req.query.tag.split(",").length > 1) {
-        query["tagList"] = {
-          $in: req.query.tag.split(",").map((tag) =>  tag.toLowerCase())};
-      } else { 
-        query["tagList"] = req.query.tag;
-      }
+      _where = "tagList";
+      _in = req.query.tag.split(",").map((tag) => tag.toLowerCase());
     }
     if (req.query.author) {
-      const author = await User.findOne({ username: req.query.author })
-      if (author) {
-        query["author"] = author.id;
-      } else {
-        throw new Error("invalid-03");
-      }
+      const authors = await User.find({}).where("username").in(req.query.author.split(",").map((author) => author.toLowerCase())).select("_id");
+      _where = "author";
+      _in = authors.map((author) => author._id);
     }
     if (req.query.favorited) {
-      const author = await User.findOne({ username: req.query.favorited });
-      if (author) {
-      query["favorites"] = author.id;
-      } else {
-        throw new Error("invalid-03");
-      }
+      const query = req.query.favorited.split(",").map((author) => author.toLowerCase());
+      const articleIDFavByUser = await User.find({}).where("username").in(query).select("favorites");
+      const favArticleIDs = articleIDFavByUser.map((user) => [...user.favorites]).flat();
+      _where = "_id";
+      _in = favArticleIDs;
     }
 
-    const articles = await Article.find(query).sort({ "createdAt": "desc" }).skip(+offset).limit(+limitArticle).populate("author");
+    const articles = await Article.find({}).where(_where).in(_in).sort({ "createdAt": "desc" }).skip(+offset).limit(+limitArticle).populate("author");
 
     if (articles.length > 0) {
       res.status(200).type("application/json").json({ articles: articles.map((article) => articleGenerator(article, article.author, req.userID))})
@@ -65,7 +60,8 @@ router.get("/feed", auth.verifyUserLoggedIn, async (req, res, next) => {
   const limitArticle = req.query.limit ?? 20;
   const offset = req.query.offset ?? 0;
   try {
-    const userFeed = await Article.find({ author: req.userID }).sort({ "createdAt" : "desc" }).skip(+offset).limit(+limitArticle).populate("author");
+    const user = await User.findById(req.userID);
+    const userFeed = await Article.find({}).where("author").in( [...user.followings, user._id]).sort({ "createdAt": "desc" }).skip(+offset).limit(+limitArticle).populate("author");
     res.status(200).type("application/json").json({ articles: userFeed.map((feed) => articleGenerator(feed, feed.author, req.userID, req.userID))})
   } catch (error) {
     next({ message: "Something Went Wrong", error, status: 500})
