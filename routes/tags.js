@@ -10,7 +10,10 @@ router.get("/", async (req, res, next) => {
     const tags = await Article.distinct("tagList");
     res.status(200).type("application/json").json({ tags})
   } catch (error) {
-    
+    let detail = "something went wrong please try again";
+    let message = " Internal Server Error ";
+    let errorCode = "server-01";
+    next(customError(message, detail, message));
   }
 })
 

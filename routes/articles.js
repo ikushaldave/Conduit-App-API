@@ -12,11 +12,11 @@ const mongoose = require("mongoose")
 
 router.get("/", async (req, res, next) => {
 
-  // let query = {}
   let _in = null;
   let _where = null;
-  const limitArticle = req.query.limit ?? 20;
-  const offset = req.query.offset ?? 0;
+  const limitArticle = req.query.limit || 20;
+  const offset = req.query.offset || 0;
+  let articles = [];
 
   try {
     if (req.query.tag) {
@@ -36,13 +36,13 @@ router.get("/", async (req, res, next) => {
       _in = favArticleIDs;
     }
 
-    const articles = await Article.find({}).where(_where).in(_in).sort({ "createdAt": "desc" }).skip(+offset).limit(+limitArticle).populate("author");
-
-    if (articles.length > 0) {
-      res.status(200).type("application/json").json({ articles: articles.map((article) => articleGenerator(article, article.author, req.userID))})
+    if (_where && _in) {
+      articles = await Article.find({}).where(_where).in(_in).sort({ "createdAt": "desc" }).skip(+offset).limit(+limitArticle).populate("author");
     } else {
-      throw new Error("invalid-04");
+      articles = await Article.find({}).sort({ "createdAt": "desc" }).skip(+offset).limit(+limitArticle).populate("author");
     }
+
+    res.status(200).type("application/json").json({ articles: articles.map((article) => articleGenerator(article, article.author, req.userID))})
   } catch (error) {
     let detail = "author not found";
     let message = "bad request";
@@ -57,21 +57,24 @@ router.get("/", async (req, res, next) => {
 /* GET /api/articles/feed */
 
 router.get("/feed", auth.verifyUserLoggedIn, async (req, res, next) => {
-  const limitArticle = req.query.limit ?? 20;
-  const offset = req.query.offset ?? 0;
+  const limitArticle = req.query.limit || 20;
+  const offset = req.query.offset || 0;
   try {
     const user = await User.findById(req.userID);
     const userFeed = await Article.find({}).where("author").in( [...user.followings, user._id]).sort({ "createdAt": "desc" }).skip(+offset).limit(+limitArticle).populate("author");
     res.status(200).type("application/json").json({ articles: userFeed.map((feed) => articleGenerator(feed, feed.author, req.userID, req.userID))})
   } catch (error) {
-    next({ message: "Something Went Wrong", error, status: 500})
+    let detail = "something went wrong please try again";
+    let message = " Internal Server Error ";
+    let errorCode = "server-01";
+    next(customError(message, detail, message));
   }
 })
 
 /* GET /api/articles/:slug */
 
 router.get("/:slug", async (req, res, next) => {
-	const slugParam = req.params.slug;
+  const slugParam = req.params.slug;
   try {
     const article = await Article.findOne({ slug: slugParam }).populate("author");
     if (!article) throw new Error("invalid-04")

@@ -27,7 +27,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(auth.currentLoggedUserInfo)
 
-app.use('/api', indexRouter);
+app.use('/', indexRouter);
 app.use('/api/user', userRouter);
 app.use('/api/profiles', profileRouter);
 app.use('/api/articles', articlesRouter);

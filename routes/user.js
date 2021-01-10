@@ -42,10 +42,10 @@ router.post("/", async (req, res, next) => {
     res.status(201).type("application/json").json({ "user": {...userInfo(user, token)} })
   } catch (error) {
     let errorCode = "val-01";
-    let detail = "username should minimum of length 6 and maximum 10 & can contain '. - _' but can't start with these & others special character, email should be valid & password should contain minimum of 8 at least one capital, at least one digit, and at least one special character";
+    let detail = "username should minimum of length 6 & can contain '. - _' but can't start with these & others special character, email should be valid & password should contain minimum of 8 at least one capital, at least one digit, and at least one special character";
     let message = error._message;
     let status = 422;
-    next(customError.error(errorCode, detail, message, status))
+    next(customError(errorCode, detail, message, status))
   }
 })
 

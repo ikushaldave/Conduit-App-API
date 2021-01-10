@@ -19,7 +19,6 @@ const userSchema = new Schema(
 			trim: true,
 			unique: true,
 			minlength: 6,
-			maxlength: 10,
 			lowercase: true,
 			match: /^(?=.{4,10}$)(?:[a-zA-Z\d]+(?:(?:\.|-|_)[a-zA-Z\d])*)+$/,
 		},

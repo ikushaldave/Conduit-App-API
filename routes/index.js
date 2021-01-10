@@ -3,7 +3,7 @@ var router = express.Router();
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
-  res.send("Conduit App");
+  res.status(200).type("html").send("Conduit App");
 });
 
 module.exports = router;
