@@ -42,7 +42,7 @@ router.get("/", async (req, res, next) => {
       articles = await Article.find({}).sort({ "createdAt": "desc" }).skip(+offset).limit(+limitArticle).populate("author");
     }
 
-    res.status(200).type("application/json").json({ articles: articles.map((article) => articleGenerator(article, article.author, req.userID))})
+    res.status(200).type("application/json").json({ articles: articles.map((article) => articleGenerator(article, article.author, req.userID)), "articlesCount": articles.length})
   } catch (error) {
     let detail = "author not found";
     let message = "bad request";
@@ -62,7 +62,7 @@ router.get("/feed", auth.verifyUserLoggedIn, async (req, res, next) => {
   try {
     const user = await User.findById(req.userID);
     const userFeed = await Article.find({}).where("author").in( [...user.followings, user._id]).sort({ "createdAt": "desc" }).skip(+offset).limit(+limitArticle).populate("author");
-    res.status(200).type("application/json").json({ articles: userFeed.map((feed) => articleGenerator(feed, feed.author, req.userID, req.userID))})
+    res.status(200).type("application/json").json({ articles: userFeed.map((feed) => articleGenerator(feed, feed.author, req.userID, req.userID)), "articlesCount": userFeed.length });
   } catch (error) {
     let detail = "something went wrong please try again";
     let message = " Internal Server Error ";

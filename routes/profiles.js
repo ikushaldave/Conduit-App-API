@@ -58,7 +58,7 @@ router.delete("/:username/follow", auth.verifyUserLoggedIn, async (req, res, nex
   try {
     const isFollowUserInDB = await User.findOne({ username });
     if (isFollowUserInDB) {
-      const currentUser = await User.findById(req.userID).populate("followings");
+      const currentUser = await User.findById(req.userID);
       const isCurrentUserFollowing = currentUser.followings.includes(isFollowUserInDB.id);
       if (isCurrentUserFollowing) {
         const followingUser = await User.findByIdAndUpdate(isFollowUserInDB.id, { $pull: { followers: req.userID } }, { new: true, useFindAndModify: false });
