@@ -63,7 +63,6 @@ const userSchema = new Schema(
 );
 
 async function hashPassword (next) {
-	console.log(this)
   if (this.local.password.trim()) {
     try {
       this.local.password = await bcrypt.hash(this.local.password, 12);

@@ -57,9 +57,4 @@ const articleSchema = new Schema(
 	{ timestamps: true }
 );
 
-articleSchema.pre("save", async function (next) {
-	console.log(this);
-	next()
-})
-
 module.exports = mongoose.model("Article", articleSchema);
