@@ -6,7 +6,7 @@ module.exports = {
       const token = await jwt.sign(payload, process.env.SECRET);
       return token;
     } catch (error) {
-      
+      console.error(error);
     }
   }
 }

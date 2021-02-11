@@ -1,5 +1,7 @@
 const jwt = require("jsonwebtoken");
 
+const customError = require("../modules/custom-error");
+
 module.exports = {
   verifyUserLoggedIn: async (req, res, next) => {
     try {
@@ -29,13 +31,4 @@ module.exports = {
       return next(customError(errorCode, detail, error.message, status));
     }
   }
-}
-
-function customError(errorCode, detail, message, status) {
-	return {
-		message,
-		status,
-    detail,
-    errorCode,
-	};
 }

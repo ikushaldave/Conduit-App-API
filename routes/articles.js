@@ -8,6 +8,8 @@ const Article = require("../models/Article")
 const Comment = require("../models/Comment")
 const mongoose = require("mongoose")
 
+const customError = require("../modules/custom-error");
+
 /* GET /api/articles */
 
 router.get("/", async (req, res, next) => {
@@ -360,15 +362,6 @@ function commentGenerator(comment, author, loggedUserID = null) {
 			followings: `/api/profiles/${author.username}/followings`,
 			followers: `/api/profiles/${author.username}/followers`,
 		},
-	};
-}
-
-function customError(errorCode, detail, message, status) {
-	return {
-		message,
-		status,
-		detail,
-		errorCode,
 	};
 }
 

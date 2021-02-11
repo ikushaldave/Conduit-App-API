@@ -5,6 +5,8 @@ const User = require("../models/User");
 
 const auth = require("../middleware/auth");
 
+const customError = require("../modules/custom-error");
+
 /* GET /api/profiles/:username */
 
 router.get("/:username", async (req, res, next) => {
@@ -130,15 +132,6 @@ function profile (user, loggedUserID = null) {
 		followings: `/api/profiles/${user.username}/followings`,
 		followers: `/api/profiles/${user.username}/followers`,
   };
-}
-
-function customError(errorCode, detail, message, status) {
-	return {
-		message,
-		status,
-		detail,
-		errorCode,
-	};
 }
 
 module.exports = router;

@@ -7,6 +7,8 @@ var jwt = require("../config/token")
 var auth = require("../middleware/auth")
 var hashPassword = require("../modules/hashPassword")
 
+const customError = require("../modules/custom-error");
+
 /* GET /api/user */
 
 router.get('/', auth.verifyUserLoggedIn, async (req, res, next) => {
@@ -113,15 +115,6 @@ function userInfo (user, token) {
     image: user.image,
     token
   }
-}
-
-function customError(errorCode, detail, message, status) {
-	return {
-		message,
-		status,
-		detail,
-		errorCode,
-	};
 }
 
 module.exports = router;
