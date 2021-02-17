@@ -123,11 +123,17 @@ router.post("/", auth.verifyUserLoggedIn, async (req, res, next) => {
 
 router.put("/:slug", auth.verifyUserLoggedIn, async (req, res, next) => {
   const slugParam = req.params.slug;
+  console.log(req.body, slugParam);
   try {
-    const isSlugAvailable = await Article.findOne({ slug: slug(req.body.article.title) });
-    if(isSlugAvailable) throw new Error("val-04")
     const article = await Article.findOne({ slug: slugParam }).populate("author");
+
+    const { title, description, body, tagList } = req.body.article
+
+    if (!article) throw new Error("invalid-04");
+    if (!(title && description && body)) throw new Error("val-04");
+
     const isUserOwnerOfArticle = article.author.id === req.userID;
+
     if (isUserOwnerOfArticle) {
       if (req.body.article.title) {
         req.body.article.slug = slug(req.body.article.title)
@@ -141,14 +147,22 @@ router.put("/:slug", auth.verifyUserLoggedIn, async (req, res, next) => {
       throw new Error("auth-03")
     }
   } catch (error) {
-    let detail = "title is required, description is required ,body is required ";
-    let message = error._message;
-    let status = 422;
+    let detail = message = status = null;
+
     if (error.message === "auth-03") {
       message = "you are not authorize to modify article";
       detail = "user is not authorize to edit a article it is not a owner of article";
       status = 403
+    } else if (error.message === "val-04") {
+      detail = "title is required, description is required ,body is required ";
+      message = error._message;
+      status = 422;
+    } else {
+      detail = "Article not found";
+		  message = "bad request";
+		  status = 404;
     }
+
     next(customError(error.message, detail, message, status));
   }
 })
@@ -323,7 +337,8 @@ function articleGenerator (article, author, loggedUserID = null) {
 	const isLoggedUserIsFollowing = author.followings.includes(loggedUserID);
   const isLoggedUserIsFollower = author.followers.includes(loggedUserID);
   const isFavoritesByUser = author.favorites.includes(article.id);
-	return {
+  return {
+    id: article.id,
 		slug: article.slug,
 		title: article.title,
 		description: article.description,
@@ -339,8 +354,8 @@ function articleGenerator (article, author, loggedUserID = null) {
 			image: author.image,
 			following: isLoggedUserIsFollowing,
 			follower: isLoggedUserIsFollower,
-			followings: `/api/profiles/${author.username}/followings`,
-			followers: `/api/profiles/${author.username}/followers`,
+			// followings: `/api/profiles/${author.username}/followings`,
+			// followers: `/api/profiles/${author.username}/followers`,
 		},
 	};
 }
@@ -359,8 +374,8 @@ function commentGenerator(comment, author, loggedUserID = null) {
 			image: author.image,
 			following: isLoggedUserIsFollowing,
 			follower: isLoggedUserIsFollower,
-			followings: `/api/profiles/${author.username}/followings`,
-			followers: `/api/profiles/${author.username}/followers`,
+			// followings: `/api/profiles/${author.username}/followings`,
+			// followers: `/api/profiles/${author.username}/followers`,
 		},
 	};
 }

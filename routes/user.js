@@ -1,4 +1,5 @@
 var express = require('express');
+var cloudinary = require("cloudinary").v2;
 var router = express.Router();
 
 var User = require("../models/User");
@@ -43,22 +44,27 @@ router.post("/", async (req, res, next) => {
     const token = await jwt.generateToken({ userID: user.id })
     res.status(201).type("application/json").json({ "user": {...userInfo(user, token)} })
   } catch (error) {
-    let errorCode = "val-01";
-    let detail = "username should minimum of length 6 & can contain '. - _' but can't start with these & others special character, email should be valid & password should contain minimum of 8 at least one capital, at least one digit, and at least one special character";
-    let message = error._message;
-    let status = 422;
-    next(customError(errorCode, detail, message, status))
+    let detail = message = status = null;
+    status = 422;
+    if (error.message === "val-01") {
+      detail = "username should minimum of length 6 & can contain '. - _' but can't start with these & others special character, email should be valid & password should contain minimum of 8 at least one capital, at least one digit, and at least one special character";
+      message = "validation failed";
+    } else {
+      detail = "user already exist";
+      message = "already exist";
+      error.message = "val-03"
+    }
+    next(customError(error.message, detail, message, status))
   }
 })
-
 
 /* POST /api/user/login */
 
 router.post("/login", async (req, res, next) => {
   try {
-    if (req.body.users.email.trim() && req.body.users.password.trim()) {
-      const user = await User.findOne({ email: req.body.users.email });
-      const isPasswordValid = await user.validatePassword(req.body.users.password);
+    if (req.body.user.email.trim() && req.body.user.password.trim()) {
+      const user = await User.findOne({ email: req.body.user.email });
+      const isPasswordValid = await user.validatePassword(req.body.user.password);
       if (isPasswordValid) {
         const token = await jwt.generateToken({ userID: user.id })
         res.status(200).type("application/json").json({ "user": {...userInfo(user, token) }})

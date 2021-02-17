@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 const bcrypt = require("bcrypt");
-const { use } = require("../routes/user");
 
 const userSchema = new Schema(
 	{
@@ -9,9 +8,9 @@ const userSchema = new Schema(
 			type: String,
 			required: true,
 			trim: true,
-			match: /\S+@\S+\.\S+/,
+			match: /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/,
 			lowercase: true,
-			unique: true
+			unique: true,
 		},
 		username: {
 			type: String,
@@ -20,7 +19,8 @@ const userSchema = new Schema(
 			unique: true,
 			minlength: 6,
 			lowercase: true,
-			match: /^(?=.{4,10}$)(?:[a-zA-Z\d]+(?:(?:\.|-|_)[a-zA-Z\d])*)+$/,
+			unique: true,
+			match: /^(?=.{4,25}$)(?:[a-zA-Z\d]+(?:(?:\.|-|_)[a-zA-Z\d])*)+$/,
 		},
 		bio: {
 			type: String,
@@ -37,7 +37,7 @@ const userSchema = new Schema(
 				type: String,
 				trim: true,
 				minlength: 8,
-				match: /^(?=.*?[A-Z])(?=(.*[a-z]){1,})(?=(.*[\d]){1,})(?=(.*[\W]){1,})(?!.*\s).{8,}$/,
+				match: /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])(?=.{8,})/,
 			},
 		},
 		followings: [
@@ -55,9 +55,9 @@ const userSchema = new Schema(
 		favorites: [
 			{
 				type: Schema.Types.ObjectId,
-				ref: "Article"
-			}
-		]
+				ref: "Article",
+			},
+		],
 	},
 	{ timestamps: true }
 );
