@@ -82,7 +82,7 @@ router.delete("/:username/follow", auth.verifyUserLoggedIn, async (req, res, nex
 
 /* GET /api/profiles/:username/following */
 
-router.get("/:username/followings", auth.verifyUserLoggedIn, async (req, res, next) => {
+router.get("/:username/followings", async (req, res, next) => {
   const username = req.params.username;
   try {
     const isUserInDB = await User.findOne({ username })
@@ -102,7 +102,7 @@ router.get("/:username/followings", auth.verifyUserLoggedIn, async (req, res, ne
 
 /* GET /api/profiles/:username/follower */
 
-router.get("/:username/followers", auth.verifyUserLoggedIn, async (req, res, next) => {
+router.get("/:username/followers", async (req, res, next) => {
   const username = req.params.username;
   try {
 		const isFollowUserInDB = await User.findOne({ username });

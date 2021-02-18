@@ -64,6 +64,7 @@ router.post("/login", async (req, res, next) => {
   try {
     if (req.body.user.email.trim() && req.body.user.password.trim()) {
       const user = await User.findOne({ email: req.body.user.email });
+      if(!user) throw new Error("auth-03");
       const isPasswordValid = await user.validatePassword(req.body.user.password);
       if (isPasswordValid) {
         const token = await jwt.generateToken({ userID: user.id })
@@ -76,13 +77,16 @@ router.post("/login", async (req, res, next) => {
     }
   } catch (error) {
     let message = detail = null;
-    if  (error.message == "auth-02") {
-      message = "password is invalid";
-      detail = "password doesn't match";
-    } else {
-      message = "email and password is required";
-      detail = "valid email and correct password is required";
-    }
+    if (error.message == "auth-02") {
+        message = "password is invalid";
+        detail = "password doesn't match";
+      } else if (error.message == "auth-03") {
+        message = "email is invalid";
+        detail = "email doesn't match";
+      } else {
+        message = "email and password is required";
+        detail = "valid email and correct password is required";
+      }
     return next(customError(error.message, detail, message, 400));
   }
 

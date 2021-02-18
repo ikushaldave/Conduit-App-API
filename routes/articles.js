@@ -44,7 +44,9 @@ router.get("/", async (req, res, next) => {
       articles = await Article.find({}).sort({ "createdAt": "desc" }).skip(+offset).limit(+limitArticle).populate("author");
     }
 
-    res.status(200).type("application/json").json({ articles: articles.map((article) => articleGenerator(article, article.author, req.userID)), "articlesCount": articles.length})
+    const allArticles = await Article.find({});
+
+    res.status(200).type("application/json").json({ articles: articles.map((article) => articleGenerator(article, article.author, req.userID)), "articlesCount": articles.length, "allArticlesCount": allArticles.length})
   } catch (error) {
     let detail = "author not found";
     let message = "bad request";
@@ -123,7 +125,6 @@ router.post("/", auth.verifyUserLoggedIn, async (req, res, next) => {
 
 router.put("/:slug", auth.verifyUserLoggedIn, async (req, res, next) => {
   const slugParam = req.params.slug;
-  console.log(req.body, slugParam);
   try {
     const article = await Article.findOne({ slug: slugParam }).populate("author");
 
@@ -135,18 +136,15 @@ router.put("/:slug", auth.verifyUserLoggedIn, async (req, res, next) => {
     const isUserOwnerOfArticle = article.author.id === req.userID;
 
     if (isUserOwnerOfArticle) {
-      if (req.body.article.title) {
-        req.body.article.slug = slug(req.body.article.title)
-      }
-      if (req.body.article.tagList) {
-        article.tagList.addToSet(req.body.article.tagList.join(","));
-      }
-      const modifiedArticle = await Article.findOneAndUpdate({ slug: slugParam }, { ...req.body.article }, { new: true, useFindAndModify: false });
+
+      const modifiedArticle = await Article.findOneAndUpdate({ slug: slugParam }, { title, description, body, slug: slug(title) }, { new: true, useFindAndModify: false }).set("tagList", tagList);
+      console.log(modifiedArticle);
       res.status(202).type("application/json").json({ article: { ...articleGenerator(modifiedArticle, article.author, req.userID) }})
     } else {
       throw new Error("auth-03")
     }
   } catch (error) {
+    console.log(error);
     let detail = message = status = null;
 
     if (error.message === "auth-03") {
@@ -159,8 +157,8 @@ router.put("/:slug", auth.verifyUserLoggedIn, async (req, res, next) => {
       status = 422;
     } else {
       detail = "Article not found";
-		  message = "bad request";
-		  status = 404;
+      message = "bad request";
+      status = 404;
     }
 
     next(customError(error.message, detail, message, status));
