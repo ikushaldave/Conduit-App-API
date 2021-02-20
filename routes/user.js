@@ -41,9 +41,11 @@ router.post("/", async (req, res, next) => {
         password: req.body.user.password
       }
     });
+    console.log(user);
     const token = await jwt.generateToken({ userID: user.id })
     res.status(201).type("application/json").json({ "user": {...userInfo(user, token)} })
   } catch (error) {
+    console.log(error);
     let detail = message = status = null;
     status = 422;
     if (error.message === "val-01") {

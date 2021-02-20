@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 
 const userSchema = new Schema(
 	{
@@ -17,7 +17,7 @@ const userSchema = new Schema(
 			required: true,
 			trim: true,
 			unique: true,
-			minlength: 6,
+			minlength: 4,
 			lowercase: true,
 			unique: true,
 			match: /^(?=.{4,25}$)(?:[a-zA-Z\d]+(?:(?:\.|-|_)[a-zA-Z\d])*)+$/,
