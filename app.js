@@ -3,7 +3,7 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
-var cloudinary = require("cloudinary").v2;
+var cors = require("cors");
 
 var db = require("./db/connection")
 var auth = require("./middleware/auth")
@@ -16,17 +16,13 @@ var tagsRouter = require("./routes/tags");
 
 require("dotenv").config()
 db.connect();
-cloudinary.config({
-	cloud_name: process.env.CLOUDNARY_CLOUD_NAME,
-	api_key: process.env.CLOUDNARY_API_KEY,
-	api_secret: process.env.CLOUDNARY_API_SECRET,
-});
 
 var app = express()
 
 // Middleware
 
 app.use(logger('dev'));
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());

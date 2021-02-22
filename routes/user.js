@@ -97,6 +97,7 @@ router.post("/login", async (req, res, next) => {
 /* PUT /api/user/ */
 
 router.put("/", auth.verifyUserLoggedIn, async (req, res, next) => {
+  console.log(req);
   const user = req.body.user
   const token = req.headers.authorization;
   try {
